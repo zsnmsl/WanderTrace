@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">游迹 · WanderTrace</string>
+    <string name="module_description">系统框架全局定位与原生计步模拟，支持 API 102 进程内热重载</string>
+</resources>

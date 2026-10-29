@@ -1,0 +1,29 @@
+name: Bug report
+description: Report a reproducible problem with WanderTrace.
+title: "[Bug] "
+body:
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: App version, Android version/ROM, CPU ABI, ROOT manager, framework version and API level.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the selected map provider, layer and simulation mode when relevant. Never include your API key or private route.
+    validations:
+      required: true
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized logs or screenshots
+      description: Remove credentials, private coordinates, routes, device identifiers and account information.

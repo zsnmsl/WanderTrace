@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src https: data:; connect-src https:;">
+<link rel="stylesheet" href="leaflet.css">
+<style>
+html,body,#map{height:100%;width:100%;margin:0;overflow:hidden;background:#dce6e4;touch-action:none}
+.leaflet-container{font:12px sans-serif;outline:none}.leaflet-control-attribution{max-width:100%;font-size:10px}
+#status{position:absolute;z-index:1000;left:50%;top:10px;transform:translateX(-50%);max-width:90%;box-sizing:border-box;padding:7px 10px;background:#fffffff0;border-radius:8px;color:#34534b;font:12px sans-serif;text-align:center;pointer-events:none}
+#status[hidden]{display:none}
+</style></head><body><div id="map"></div><div id="status">地图准备中…</div>
+<script src="leaflet.js"></script><script src="map.js"></script></body></html>

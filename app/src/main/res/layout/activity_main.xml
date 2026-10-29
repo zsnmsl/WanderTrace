@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@color/bg">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="12dp" android:paddingBottom="12dp">
+        <TextView android:layout_width="46dp" android:layout_height="46dp" android:gravity="center" android:background="@drawable/bg_primary" android:text="游" android:textColor="#FFFFFF" android:textSize="21sp" android:textStyle="bold" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="12dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="游迹" android:textColor="@color/text" android:textSize="22sp" android:textStyle="bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="WANDERTRACE · 地图模拟" android:textColor="@color/sub" android:textSize="10sp" android:letterSpacing="0.08" />
+        </LinearLayout>
+        <TextView android:id="@+id/tvStatus" android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="@drawable/bg_action" android:paddingStart="12dp" android:paddingEnd="12dp" android:paddingTop="7dp" android:paddingBottom="7dp" android:text="未开启" android:textColor="@color/sub" android:textSize="12sp" />
+    </LinearLayout>
+    <TextView android:id="@+id/tvEnvironment" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="18dp" android:layout_marginEnd="18dp" android:layout_marginBottom="6dp" android:padding="12dp" android:background="@drawable/bg_action" android:text="正在检查 ROOT 授权与 LSPosed…" android:textColor="@color/sub" android:textSize="12sp" android:clickable="true" android:focusable="true" android:minHeight="48dp" android:gravity="center_vertical" />
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:fillViewport="true" android:scrollbars="none" android:id="@+id/pageEditor">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingStart="18dp" android:paddingEnd="18dp" android:paddingTop="14dp" android:paddingBottom="24dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="选一处，开启游迹。" android:textColor="@color/text" android:textSize="20sp" android:textStyle="bold" android:id="@+id/tvPageTitle" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="拖动地图，将中心标记对准想去的地方。" android:textColor="@color/sub" android:textSize="13sp" android:id="@+id/tvPageSubtitle" />
+            <LinearLayout style="@style/Card" android:layout_marginTop="14dp" android:padding="12dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="地图画布" android:textColor="@color/text" android:textStyle="bold" android:textSize="16sp" />
+                        <TextView android:id="@+id/tvMapHint" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="使用地图中央标记选点" android:textColor="@color/sub" android:textSize="12sp" />
+                    </LinearLayout>
+                </LinearLayout>
+                <FrameLayout android:id="@+id/mapHost" android:layout_width="match_parent" android:layout_height="320dp" android:layout_marginTop="12dp" android:background="@drawable/bg_card" android:clipToOutline="true">
+                    <com.wandertrace.RouteMapView android:id="@+id/routeMap" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="拖动地图移动中心选点，双指缩放" />
+                    <com.wandertrace.MapCenterView android:id="@+id/mapCenter" android:layout_width="48dp" android:layout_height="48dp" android:layout_gravity="center" android:contentDescription="地图中心选点标记" android:importantForAccessibility="no" android:clickable="false" android:focusable="false" />
+                </FrameLayout>
+                <TextView android:id="@+id/tvSelection" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="点击地图选择位置 · 双指缩放" android:textColor="@color/sub" android:textSize="12sp" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="9dp">
+                    <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+                    <Button android:id="@+id/btnUndo" style="@style/ActionButton" android:text="撤销" />
+                    <Button android:id="@+id/btnClear" style="@style/ActionButton" android:layout_marginStart="6dp" android:text="清空" />
+                </LinearLayout>
+            </LinearLayout>
+            <LinearLayout style="@style/Card" android:layout_marginTop="12dp" android:orientation="horizontal" android:gravity="center_vertical">
+                <EditText android:id="@+id/etSearch" style="@style/Field" android:layout_width="0dp" android:layout_weight="1" android:layout_marginTop="0dp" android:hint="搜索地点，移动中心标记" android:inputType="text" android:imeOptions="actionSearch" />
+                <Button android:id="@+id/btnSearch" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="查找" />
+            </LinearLayout>
+            <LinearLayout android:id="@+id/boxRoute" style="@style/Card" android:layout_marginTop="12dp" android:visibility="gone">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="我的路线" android:textSize="16sp" android:textStyle="bold" android:textColor="@color/text" />
+                <TextView android:id="@+id/tvPlanInfo" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="移动地图后，点击添加选点" android:textColor="@color/sub" android:textSize="12sp" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="12dp">
+                    <Button android:id="@+id/btnSaveRoute" android:layout_width="0dp" android:layout_weight="1" android:text="保存路线" android:layout_marginStart="0dp" style="@style/ActionButton" />
+                    <Button android:id="@+id/btnLoadRoute" android:layout_width="0dp" android:layout_weight="1" android:text="已存路线" android:layout_marginStart="6dp" style="@style/ActionButton" />
+                </LinearLayout>
+            </LinearLayout>
+            <TextView android:id="@+id/tvPreview" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:padding="14dp" android:background="@drawable/bg_card" android:text="开始后，这里会显示当前模拟状态。" android:textColor="@color/sub" android:textSize="12sp" />
+        </LinearLayout>
+    </ScrollView>
+    <ScrollView android:id="@+id/pageSettings" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:fillViewport="true" android:scrollbars="none" android:visibility="gone">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingStart="18dp" android:paddingEnd="18dp" android:paddingTop="10dp" android:paddingBottom="24dp">
+            <LinearLayout style="@style/Card">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="地图服务" android:textColor="@color/text" android:textSize="17sp" android:textStyle="bold" />
+                <RadioGroup android:id="@+id/rgProvider" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginTop="10dp">
+                    <RadioButton android:id="@+id/rbOsm" style="@style/Segment" android:layout_width="match_parent" android:layout_weight="0" android:layout_height="44dp" android:checked="true" android:text="OpenStreetMap · 免 Key" android:textSize="12sp" android:layout_marginStart="0dp" android:layout_marginTop="6dp" />
+                    <RadioButton android:id="@+id/rbAmap" style="@style/Segment" android:layout_width="match_parent" android:layout_weight="0" android:layout_height="44dp" android:layout_marginStart="0dp" android:text="高德地图 · Web 服务 Key" android:textSize="12sp" android:layout_marginTop="6dp" />
+                    <RadioButton android:id="@+id/rbTianditu" android:layout_width="match_parent" android:layout_height="44dp" android:layout_weight="0" android:layout_marginTop="6dp" android:text="天地图 · 服务端 Key" style="@style/Segment" />
+                    <RadioButton android:id="@+id/rbTencent" android:layout_width="match_parent" android:layout_height="44dp" android:layout_weight="0" android:layout_marginTop="6dp" android:layout_marginStart="0dp" android:text="腾讯地图 · WebService Key" android:textSize="12sp" style="@style/Segment" />
+                    <RadioButton android:id="@+id/rbBaidu" android:layout_width="match_parent" android:layout_height="44dp" android:layout_weight="0" android:layout_marginTop="6dp" android:layout_marginStart="0dp" android:text="百度搜索 · 高德底图" android:textSize="12sp" style="@style/Segment" />
+                </RadioGroup>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="地图图层" android:textColor="@color/text" android:textSize="14sp" android:textStyle="bold" android:layout_marginTop="16dp" />
+                <RadioGroup android:id="@+id/rgMapLayer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="10dp">
+                    <RadioButton android:id="@+id/rbRoad" android:text="道路图" android:layout_height="48dp" android:layout_marginStart="0dp" style="@style/Segment" />
+                    <RadioButton android:id="@+id/rbSatellite" android:text="卫星图" android:layout_height="48dp" android:layout_marginStart="8dp" style="@style/Segment" />
+                </RadioGroup>
+                <TextView android:id="@+id/tvLayerHint" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="切换道路图与卫星图" android:textColor="@color/sub" android:textSize="12sp" />
+                <Button android:id="@+id/btnMapSetup" android:layout_width="match_parent" android:layout_marginTop="12dp" android:text="重新配置地图 API" style="@style/ActionButton" />
+            </LinearLayout>
+            <LinearLayout android:id="@+id/boxSettings" style="@style/Card" android:layout_marginTop="16dp" android:visibility="visible">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Web 服务 Key" android:textColor="@color/text" android:textSize="17sp" android:textStyle="bold" />
+                <TextView android:id="@+id/tvKeyHint" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="仅填写当前服务的一把 Web 服务 Key" android:textColor="@color/sub" android:textSize="12sp" />
+                <EditText android:id="@+id/etKey" android:hint="Web 服务 Key" android:inputType="textNoSuggestions" style="@style/Field" />
+                <Button android:id="@+id/btnSaveKey" android:layout_width="match_parent" android:layout_marginTop="10dp" android:text="保存 Key" style="@style/ActionButton" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="定位精度（米）" android:textColor="@color/sub" android:textSize="12sp" android:layout_marginTop="12dp" />
+                <EditText android:id="@+id/etAccuracy" style="@style/Field" android:layout_marginTop="14dp" android:hint="定位精度（米）" android:inputType="numberDecimal" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="GPS 抖动半径（1–3 米）" android:textColor="@color/sub" android:textSize="12sp" android:layout_marginTop="12dp" />
+                <EditText android:id="@+id/etJitter" style="@style/Field" android:hint="GPS 抖动半径（1–3 米）" android:inputType="numberDecimal" />
+                <Switch android:id="@+id/swWgs84" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="输出 WGS-84 坐标" android:textColor="@color/text" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="默认输出 GCJ-02；Google 地图等使用 WGS-84 时开启。" android:textColor="@color/sub" android:textSize="12sp" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="定位参数将在下次开始模拟时应用，速度与步频在路线启动对话框中设置。" android:textColor="@color/sub" android:textSize="12sp" android:layout_marginTop="12dp" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@color/card" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="18dp" android:paddingEnd="18dp" android:paddingTop="10dp" android:paddingBottom="10dp" android:id="@+id/editorActions">
+        <Button android:id="@+id/btnAddPoint" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" android:text="添加选点" android:layout_marginEnd="10dp" style="@style/ActionButton" />
+        <Button android:id="@+id/btnStart" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" android:background="@drawable/bg_primary" android:backgroundTint="@null" android:textColor="#FFFFFF" android:text="开始模拟" android:textSize="14sp" android:textStyle="bold" android:textAllCaps="false" android:minWidth="0dp" />
+    </LinearLayout>
+    <RadioGroup android:id="@+id/rgMode" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="0dp" android:background="@color/card" android:padding="8dp">
+        <RadioButton android:id="@+id/rbSingle" style="@style/BottomTab" android:checked="true" android:text="单点模拟" android:drawableTop="@drawable/ic_pin" />
+        <RadioButton android:id="@+id/rbRoute" style="@style/BottomTab" android:layout_marginStart="8dp" android:text="路线模拟" android:drawableTop="@drawable/ic_route" />
+        <RadioButton android:id="@+id/rbSettings" android:text="设置" android:layout_marginStart="8dp" style="@style/BottomTab" android:drawableTop="@drawable/ic_settings" />
+    </RadioGroup>
+</LinearLayout>
