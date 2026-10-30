@@ -41,6 +41,25 @@ public final class EnvironmentStatus {
         for (String line : output.split("\\r?\\n")) if (line.startsWith(prefix)) return line.substring(prefix.length()).trim();
         return "";
     }
+    static String sensorStreamDetail(String raw) {
+        try {
+            JSONObject stream=new JSONObject(raw);
+            if (!stream.has("channels")) return "";
+            long channels=Math.max(0,stream.optLong("channels"));
+            String text="\n计步订阅通道："+channels;
+            if (channels==0) text+="（尚未捕获计步订阅；Hook 已加载不代表目标应用已收到事件）";
+            text+=stream.optInt("stepPipelineRevision",1)>=2 ? "\n原生计步补丁：已加载" : "\n原生计步补丁：未加载，当前仍使用旧原生桥";
+            if (stream.has("sentEvents")) {
+                text+="\n计步事件：已发送 "+Math.max(0,stream.optLong("sentEvents"))+"，待发送 "+Math.max(0,stream.optLong("pendingEvents"))
+                        +"，重试 "+Math.max(0,stream.optLong("retryWrites"))+"，丢弃 "+Math.max(0,stream.optLong("droppedEvents"));
+                if (stream.optLong("droppedEvents")>0 || stream.optLong("writeErrors")>0)
+                    text+="\n计步事件存在积压丢弃或写入错误，不能据 Hook 状态判断计步已正常送达。";
+            }
+            if ("non-wakeup-standard-step".equals(stream.optString("coverage")))
+                text+="\n覆盖范围：非唤醒型标准计步传感器；未覆盖唤醒型和厂商私有健康接口。";
+            return text;
+        } catch (Exception ignored) {return "";}
+    }
     static EnvironmentStatus parse(int exitCode, String output, long now, int version) {
         if (exitCode != 0 || !"0".equals(field(output,"UID"))) return rootFailure(Root.UNAVAILABLE);
         boolean present="1".equals(field(output,"FRAMEWORK_PRESENT"));
@@ -49,7 +68,7 @@ public final class EnvironmentStatus {
         boolean live=false, current=false, location=false, sensor=false, stale=false;
         int providers=0;
         boolean hotReload=false;int livePid=-1;
-        String generation="";
+        String generation="",sensorStream="";
         boolean compatible=false,legacy=false;
         try {livePid=Integer.parseInt(field(output,"SYSTEM_PID"));}catch (NumberFormatException ignored) {}
         String bootIdentity=field(output,"BOOT_ID"),ticksIdentity=SystemIdentity.processStartTicks(field(output,"PROCESS_STAT"));
@@ -87,6 +106,7 @@ public final class EnvironmentStatus {
                 if (live) {
                     running=true; present=true; current=status.optInt("moduleVersionCode",-1)==version;
                     location=status.optBoolean("locationHook"); sensor=status.optBoolean("sensorHook");
+                    sensorStream=sensorStreamDetail(status.optString("sensor"));
                     providers=Math.max(0,status.optInt("providers"));
                     hotReload=status.optBoolean("hotReload") && status.optInt("frameworkApi")>=102;
                     livePid=status.optInt("pid",-1);identity=boot+":"+ticks;
@@ -107,6 +127,7 @@ public final class EnvironmentStatus {
             detail="ROOT：已授权\nLSPosed / 兼容框架：已确认系统模块实时运行\n推荐作用域：仅系统框架"
                     + "\n定位 Hook：已加载（"+providers+" 个提供者）\n原生计步 Hook："+(sensor ? "已加载" : "未就绪；开启步频前请检查兼容性")
                     + "\n进程内热重载："+(hotReload ? "支持（Java 模块，保留原生桥）" : "当前驻留模块不支持");
+            detail+=sensorStream;
             if (!current) detail+="\n运行中的后端配置协议兼容，可以正常开始 / 停止模拟；代码版本更新在后台单独处理。";
             if (legacy) detail+="\n旧格式心跳已通过系统进程 PID、system 文件所有者和连续两次递增采样验证。";
         } else if (live) {

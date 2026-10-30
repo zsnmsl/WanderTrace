@@ -8,8 +8,8 @@ android {
         applicationId "com.wandertrace"
         minSdk 27
         targetSdk 34
-        versionCode 11
-        versionName "2.4.1-mapfix"
+        versionCode 12
+        versionName "2.4.2-stepfix"
     }
 
     signingConfigs {

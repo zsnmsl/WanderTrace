@@ -68,6 +68,8 @@ Routes are stored in GCJ-02. Coordinates are converted when drawing on WGS-84 ba
 
 ## System integration and hot reload
 
+Step timing, bounded delivery queues, diagnostics, and compatibility limits are described in the [step simulation notes](docs/STEP_SIMULATION.md). Compatibility with 云运动 has not been verified on a device for this revision.
+
 Location is handled at the provider distribution layer in `system_server`. Step simulation uses native system sensor event channels for non-wake-up **STEP_COUNTER / STEP_DETECTOR** sensors. The module does not use Android test location providers or sensor data injection mode, and it does not rewrite GNSS or sensor firmware. Vendor-specific health services, private sensors, and other ROM implementations require separate verification.
 
 Changes to route and simulation parameters are read during operation. Updating Java module code in the same process additionally requires framework support and an already loaded, compatible API 102 entry point. The native bridge remains resident for the process lifetime; an incompatible bridge ABI or a changed native library hash causes hot reload to be refused. First installation, migration from a legacy entry point, package changes, and native library replacement are outside this hot reload guarantee.

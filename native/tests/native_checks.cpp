@@ -29,14 +29,38 @@ int main() {
             }
         }
     }
-    assert(std::abs(cadence - 120) < 0.001);
+    assert(std::abs(stepClock.cadence() - 120) < 0.001);
     assert(counter >= 109 && counter <= 110 && detectors >= 9 && detectors <= 10);
     assert(counters == detectors);
+    uint64_t beforePause = counter;
+    tick(true, 120, 1, 20000000000LL);
+    assert(counter == beforePause + 18); // Nine elapsed seconds must not become one.
+    Event resumed[8]; ssize_t received;
+    int resumedDetectors=0;int64_t priorTimestamp=0;
+    while ((received=recv(sockets[1],resumed,sizeof(resumed),MSG_DONTWAIT))>0) {
+        for (int j=0;j<received/sizeof(Event);++j) if(resumed[j].type==18) {
+            if(priorTimestamp) assert(resumed[j].timestamp-priorTimestamp==500000000LL);
+            priorTimestamp=resumed[j].timestamp;++resumedDetectors;
+        }
+    }
+    assert(resumedDetectors==18);
+    int smallBuffer=1024;assert(setsockopt(sockets[0],SOL_SOCKET,SO_SNDBUF,&smallBuffer,sizeof(smallBuffer))==0);
+    for(int i=21;i<=30;++i) tick(true,120,1,int64_t(i)*1000000000LL);
+    assert(retryWrites>0 && channels.begin()->second.pending.size()>0);
+    int recovered=0;
+    for(int attempt=0;attempt<100;++attempt) {
+        while((received=recv(sockets[1],resumed,sizeof(resumed),MSG_DONTWAIT))>0)
+            recovered+=received/sizeof(Event);
+        if(channels.begin()->second.pending.size()==0) break;
+        tick(true,120,1,30000000000LL); // Retry even when no additional step was generated.
+    }
+    assert(recovered==40 && channels.begin()->second.pending.size()==0 && droppedEvents==0);
     forwarded.clear(); event.value.stepCounter = 101;
     writeHook(nullptr, &event, sizeof(event)); assert(forwarded.empty());
-    tick(false, 0, 1, 12000000000LL);
+    uint64_t virtualTotal=counter;
+    tick(false, 0, 1, 31000000000LL);
     writeHook(nullptr, &event, sizeof(event));
-    assert(forwarded.size() == 1 && forwarded[0].value.stepCounter >= 109);
+    assert(forwarded.size() == 1 && forwarded[0].value.stepCounter == virtualTotal);
     Event accel{}; accel.sensor=3; accel.type=1; accel.value.data[0]=9.8f;
     writeHook(nullptr, &accel, sizeof(accel)); assert(forwarded[0].value.data[0] == 9.8f);
     printf("Native checks passed: 104-byte ABI, linear cadence, counter/detector wire events, real-event suppression, stop restoration, unrelated sensors.\n");

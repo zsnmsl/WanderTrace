@@ -17,6 +17,8 @@
 #include <string>
 #include <vector>
 #include "dobby.h"
+#include "step_clock.h"
+#include "step_delivery.h"
 
 // AOSP sensors_event_t wire ABI used by SensorService and BitTube (104 bytes).
 struct Event {
@@ -36,12 +38,12 @@ static GetFd getSendFd;
 static DecStrong decStrong;
 static std::mutex mutex;
 static std::map<int, int> sensorTypes;
-struct Channel { int fd; std::map<int, int> handles; };
+struct Channel { int fd; std::map<int, int> handles; wander::StepDelivery<Event> pending; };
 static std::map<void*, Channel> channels;
 static bool installed, enabled, emitted;
-static int64_t lastTick, sessionId = -1;
-static double cadence, fractional;
+static wander::StepClock stepClock;
 static uint64_t rawCounter, counter, counterOffset, packets;
+static uint64_t generatedSteps, sentEvents, retryWrites, writeErrors, droppedEvents;
 
 static int64_t bootNanos() {
     timespec t{}; clock_gettime(CLOCK_BOOTTIME, &t);
@@ -116,6 +118,8 @@ static int activateHook(void* device, void* ident, int handle, int active) {
         auto c = channels.find(ident);
         if (c != channels.end()) {
             c->second.handles.erase(handle);
+            // Do not deliver buffered events for a sensor that was disabled.
+            c->second.pending.eraseIf([handle](const Event& event) { return event.sensor == handle; });
             if (c->second.handles.empty()) { close(c->second.fd); channels.erase(c); }
         }
         return result;
@@ -215,38 +219,57 @@ Java_com_wandertrace_xposed_NativeSensors_nativeInstall(JNIEnv* env, jclass, jin
 
 static std::string tick(bool active, double target, int64_t session, int64_t now) {
     std::lock_guard<std::mutex> guard(mutex);
-    if (session != sessionId) { cadence = fractional = 0; sessionId = session; lastTick = now; }
-    double seconds = lastTick ? std::clamp((now - lastTick) / 1e9, 0.0, 1.0) : 0;
-    lastTick = now;
     enabled = active;
-    if (!active) { cadence = fractional = 0; }
-    else {
-        target = std::isfinite(target) ? std::clamp(double(target), 0.0, 240.0) : 0;
-        double next = cadence + std::clamp(double(target) - cadence, -12 * seconds, 12 * seconds);
-        fractional += (cadence + next) * 0.5 * seconds / 60;
-        cadence = next;
-        auto steps = static_cast<uint64_t>(fractional); fractional -= steps;
-        if (steps) {
-            counter += steps; emitted = true;
-            for (auto c = channels.begin(); c != channels.end();) {
-                std::vector<Event> events;
-                for (auto [handle, type] : c->second.handles) {
-                    for (uint64_t i = 0; i < (type == 18 ? steps : 1); i++) {
+    auto span = stepClock.advance(now, active, session, target);
+    uint64_t before = counter;
+    if (span.count) { counter += span.count; generatedSteps += span.count; emitted = true; }
+    size_t handles = 0, pending = 0;
+    for (auto c = channels.begin(); c != channels.end();) {
+        auto& channel = c->second;
+        if (!active) channel.pending.clear();
+        else {
+            uint64_t previousDrops = channel.pending.dropped();
+            if (span.count && !channel.handles.empty()) {
+                // Bound catch-up work after a long pause. Counters retain the
+                // complete integral; discarded detector history is reported.
+                uint64_t keep = std::max<size_t>(1, wander::StepDelivery<Event>::capacity / channel.handles.size());
+                uint64_t first = span.count > keep ? span.count - keep : 0;
+                channel.pending.recordDropped(first * channel.handles.size());
+                for (uint64_t i = first; i < span.count; ++i) {
+                    for (auto [handle, type] : channel.handles) {
                         Event event{}; event.version = sizeof(Event); event.sensor = handle;
-                        event.type = type; event.timestamp = now;
-                        if (type == 19) event.value.stepCounter = counter; else event.value.data[0] = 1;
-                        events.push_back(event);
+                        event.type = type; event.timestamp = span.timestamp(i);
+                        if (type == 19) event.value.stepCounter = before + i + 1;
+                        else event.value.data[0] = 1;
+                        channel.pending.push(event);
                     }
                 }
-                ssize_t sent = send(c->second.fd, events.data(), events.size() * sizeof(Event), MSG_DONTWAIT | MSG_NOSIGNAL);
-                if (sent < 0 && (errno == EPIPE || errno == ECONNRESET || errno == EBADF)) {
-                    close(c->second.fd); c = channels.erase(c);
-                } else { if (sent > 0) packets++; ++c; }
+            }
+            droppedEvents += channel.pending.dropped() - previousDrops;
+            auto result = channel.pending.flush([&](const Event& event) {
+                // One event per packet also works with a one-event consumer.
+                ssize_t sent = send(channel.fd, &event, sizeof(event), MSG_DONTWAIT | MSG_NOSIGNAL);
+                if (sent == static_cast<ssize_t>(sizeof(event))) { ++packets; ++sentEvents; return wander::SendResult::Sent; }
+                if (sent < 0 && (errno == EPIPE || errno == ECONNRESET || errno == EBADF || errno == ENOTCONN))
+                    return wander::SendResult::Closed;
+                if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
+                    ++retryWrites; return wander::SendResult::Retry;
+                }
+                ++writeErrors; return wander::SendResult::Error;
+            });
+            if (result == wander::SendResult::Closed) {
+                close(channel.fd); c = channels.erase(c); continue;
             }
         }
+        handles += channel.handles.size(); pending += channel.pending.size(); ++c;
     }
-    char status[256]; snprintf(status, sizeof(status), "{\"channels\":%zu,\"cadence\":%.2f,\"counter\":%llu,\"packets\":%llu}",
-            channels.size(), cadence, static_cast<unsigned long long>(counter), static_cast<unsigned long long>(packets));
+    char status[768]; snprintf(status, sizeof(status),
+            "{\"stepPipelineRevision\":2,\"channels\":%zu,\"handles\":%zu,\"cadence\":%.2f,\"counter\":%llu,\"packets\":%llu,"
+            "\"generatedSteps\":%llu,\"sentEvents\":%llu,\"pendingEvents\":%zu,\"retryWrites\":%llu,"
+            "\"writeErrors\":%llu,\"droppedEvents\":%llu,\"coverage\":\"non-wakeup-standard-step\"}",
+            channels.size(), handles, stepClock.cadence(), static_cast<unsigned long long>(counter), static_cast<unsigned long long>(packets),
+            static_cast<unsigned long long>(generatedSteps), static_cast<unsigned long long>(sentEvents), pending,
+            static_cast<unsigned long long>(retryWrites), static_cast<unsigned long long>(writeErrors), static_cast<unsigned long long>(droppedEvents));
     return status;
 }
 
