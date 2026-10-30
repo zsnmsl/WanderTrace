@@ -97,7 +97,7 @@ public class MapFlowTest {
         assertTrue(d.isShowing());assertEquals(0,a.writes.get());
         d.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();idle();assertFalse(com.wandertrace.Config.load(a).enabled);
         a.findViewById(R.id.btnStart).performClick();idle();d=ShadowAlertDialog.getLatestAlertDialog();
-        assertEquals("0",((EditText)d.findViewById(R.id.etSpeedRandom)).getText().toString());
+        assertEquals("10",((EditText)d.findViewById(R.id.etSpeedRandom)).getText().toString());
         d.dismiss();c.pause().stop().destroy();
     }
     @Test public void everyAddedNodeIsImmediatelyPersistedAndCameraSurvivesRecreation() throws Exception {
@@ -113,5 +113,21 @@ public class MapFlowTest {
         assertEquals(center[0],restored[0],1e-5);assertEquals(center[1],restored[1],1e-5);
         assertFalse(com.wandertrace.Config.load(b).enabled);assertEquals(25,com.wandertrace.Config.fromJson(prefs.getString("editor_draft",null)).points.length);
         next.pause().stop().destroy();
+    }
+    @Test public void paceUpdatesWithTypingRandomRangeAndProfileSelection() throws Exception {
+        var c=Robolectric.buildActivity(ReadyActivity.class).setup();var a=c.get();await(a,0);
+        a.findViewById(R.id.rbRoute).performClick();add(a,39.91,116.4);add(a,39.92,116.41);
+        a.findViewById(R.id.btnStart).performClick();idle();AlertDialog d=ShadowAlertDialog.getLatestAlertDialog();
+        EditText speed=d.findViewById(R.id.etSpeed),random=d.findViewById(R.id.etSpeedRandom);
+        android.widget.TextView pace=d.findViewById(R.id.tvPace);
+        speed.setText("3");random.setText("10");
+        assertTrue(pace.getText().toString().contains("5′33″"));
+        assertTrue(pace.getText().toString().contains("5′03″–6′10″"));
+        random.setText("0");assertTrue(pace.getText().toString().contains("当前为匀速"));
+        speed.setText("0");assertTrue(pace.getText().toString().contains("静止"));
+        speed.setText("");assertTrue(pace.getText().toString().contains("有效速度"));
+        ((Spinner)d.findViewById(R.id.spProfile)).setSelection(2);idle();
+        assertTrue(pace.getText().toString().contains("5′33″"));
+        assertEquals(0,a.writes.get());d.dismiss();c.pause().stop().destroy();
     }
 }

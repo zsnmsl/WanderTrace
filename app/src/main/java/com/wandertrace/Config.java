@@ -38,8 +38,8 @@ public class Config {
 
     /** 路径模式速度 km/h */
     public double speedKmh = 20.0;
-    /** 速度随机幅度（基准速度的百分比，0–50）。 */
-    public double speedRandomPercent = 0.0;
+    /** 速度随机幅度（基准速度的百分比，0–50；新配置默认 10，已有 0 保持匀速）。 */
+    public double speedRandomPercent = 10.0;
     /** GPS 误差半径（米，1–3）。 */
     public double jitterMeters = 2.0;
     /** 步频模式：0 关闭，1 根据速度自适应，2 自定义。 */

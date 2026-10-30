@@ -1,0 +1,45 @@
+{
+  "repository": "zsnmsl/WanderTrace",
+  "base_commit": "73f514bb1420125967d707fc5225bde0fc641a51",
+  "native_sha256": "481a7a2e7bf7704dfbbddb405b355f9fe276406555796fad529ea955de67f78c",
+  "snapshot_242_paths": [
+    "app/src/main/java/com/wandertrace/EnvironmentStatus.java",
+    "app/src/test/java/com/wandertrace/SensorStreamStatusTest.java",
+    "native/CMakeLists.txt",
+    "native/wander_native.cpp",
+    "native/step_clock.h",
+    "native/step_delivery.h",
+    "native/tests/native_checks.cpp",
+    "native/tests/CMakeLists.txt",
+    "native/tests/step_pipeline_checks.cpp",
+    "scripts/build-native.ps1",
+    "docs/STEP_SIMULATION.md",
+    "docs/release-notes/v2.4.2.md"
+  ],
+  "releases": [
+    {
+      "tag": "v2.4.2",
+      "version_code": 12,
+      "version_name": "2.4.2-stepfix",
+      "title": "WanderTrace 2.4.2 — Step timing and delivery fixes",
+      "apk": "releases/WanderTrace-2.4.2-stepfix-release.apk",
+      "sha256": "ed56e7851308c6ecb1c7772c44f164cdccd8658ef9651173da6becc02ed5afc2",
+      "notes": "docs/release-notes/v2.4.2.md",
+      "latest": false,
+      "source_digest": "aa03aa8bb7679006dda7887d000588bbc46373c3b8bdc2c4362542bede08368b",
+      "commit_message": "fix(steps): correct timing and sensor event delivery for 2.4.2\n\nIntegrate full elapsed time, timestamp individual steps, retry queued writes,\nand report native patch state and transport counters. Add portable timing\nand queue checks, socket regressions, and documented coverage limitations."
+    },
+    {
+      "tag": "v2.4.3",
+      "version_code": 13,
+      "version_name": "2.4.3-pace",
+      "title": "WanderTrace 2.4.3 — Pace preview and motion variation",
+      "apk": "releases/WanderTrace-2.4.3-pace-release.apk",
+      "sha256": "6eeb685e006c4772bc35b4a11f72ea3a876dabd083e33fc28814521515a7552c",
+      "notes": "docs/release-notes/v2.4.3.md",
+      "latest": true,
+      "source_digest": "39efd8c6a825c9da39ffcfeda656fa6c256b05308f6c86e733988f94c3fb832d",
+      "commit_message": "feat(motion): add pace preview and session-based variation for 2.4.3\n\nShow live min/km pace and reference bounds; replace the repeated speed\ntable with session-seeded linear variation and exact distance integration.\nAdd continuous bounded GPS drift, compatibility checks for saved settings,\nand owner-operated source/release publication scripts with versioned notes."
+    }
+  ]
+}

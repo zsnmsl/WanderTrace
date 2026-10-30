@@ -37,15 +37,16 @@ public final class RouteEngine {
             if (total > 0.5) {
                 double base = finiteClamp(c.speedKmh, 0.0, 500.0, 0.0) / 3.6;
                 double random = finiteClamp(c.speedRandomPercent, 0.0, 50.0, 0.0) / 100.0;
-                double elapsed = Math.max(0.0, (now - (double) c.startTime) / 1000.0);
-                double v = speedAt(base, random, elapsed);
-                double d = distanceAt(base, random, elapsed);
+                double elapsed = c.startTime>0 ? Math.max(0.0, (now - (double) c.startTime) / 1000.0) : 0;
+                long seed = mix(c.startTime ^ 0x632be59bd9b4e019L);
+                double v = speedAt(base, random, elapsed,seed);
+                double d = distanceAt(base, random, elapsed,seed);
                 if (c.loop) {
                     d = d % total;
                 } else if (base > 0.0) {
                     // Brake over the final four seconds (or the whole path if short).
                     // The integrated speed reaches exactly the last point at zero speed.
-                    Brake brake = brakeFor(base, random, total);
+                    Brake brake = brakeFor(base, random, total,seed);
                     if (elapsed >= brake.start) {
                         double t = Math.min(brake.duration, elapsed - brake.start);
                         d = brake.distance + brake.speed * t * (1.0 - t / (2.0 * brake.duration));
@@ -97,103 +98,129 @@ public final class RouteEngine {
     }
 
     private static double brakeBase = -1, brakeRandom, brakeTotal;
+    private static long brakeSeed;
     private static Brake cachedBrake;
 
-    private static synchronized Brake brakeFor(double base, double random, double total) {
-        if (cachedBrake != null && brakeBase == base && brakeRandom == random && brakeTotal == total) {
+    private static synchronized Brake brakeFor(double base, double random, double total,long seed) {
+        if (cachedBrake != null && brakeBase == base && brakeRandom == random && brakeTotal == total && brakeSeed==seed) {
             return cachedBrake;
         }
         double start = 0.0;
         // At speed v, a four-second linear deceleration travels 2v metres.
-        if (speedAt(base, random, 0.0) * 2.0 < total) {
+        if (speedAt(base, random, 0.0,seed) * 2.0 < total) {
             double lo = 0.0, hi = Math.max(1.0, total / base * 2.0 + 4.0);
             // The function is strictly increasing for the allowed speed range and interval.
             for (int i = 0; i < 48; i++) {
                 double mid = (lo + hi) / 2.0;
-                if (distanceAt(base, random, mid) + 2.0 * speedAt(base, random, mid) < total) lo = mid;
+                if (distanceAt(base, random, mid,seed) + 2.0 * speedAt(base, random, mid,seed) < total) lo = mid;
                 else hi = mid;
             }
             start = (lo + hi) / 2.0;
         }
-        double distance = distanceAt(base, random, start);
-        double speed = speedAt(base, random, start);
+        double distance = distanceAt(base, random, start,seed);
+        double speed = speedAt(base, random, start,seed);
         double duration = 2.0 * (total - distance) / speed;
         cachedBrake = new Brake(start, distance, speed, duration);
         brakeBase = base;
         brakeRandom = random;
         brakeTotal = total;
+        brakeSeed = seed;
         return cachedBrake;
     }
 
-    // Each ten-second interval joins two deterministic random targets with a straight line.
-    // Integrating each trapezoid keeps position and reported speed mathematically consistent.
-    // A finite cycle permits fast seeking even after the simulation has run for months.
-    private static final int SPEED_PERIOD = 64;
+    // Seeded multiscale Haar noise: fast changes plus longer effort variations.
+    // Full blocks have zero sum, so prefix sums and exact trapezoid integrals
+    // take constant work even when seeking far into a session. Block amplitudes
+    // are hashed independently; there is no repeated 64-target speed table.
     private static final double SPEED_INTERVAL = 10.0;
+    private static final int[] SPEED_HALVES={1,4,16,64};
+    private static final double[] SPEED_WEIGHTS={.18,.22,.30,.30};
 
-    private static double target(int index) {
-        long x = (index % SPEED_PERIOD + SPEED_PERIOD) % SPEED_PERIOD;
-        x = (x ^ 0x9e3779b9L) * 0x85ebca6bL;
-        x ^= x >>> 16;
-        x *= 0xc2b2ae35L;
-        x ^= x >>> 16;
-        return ((x & 0xffffffffL) / 4294967295.0) * 2.0 - 1.0;
+    private static double amplitude(long seed,long block,int level) {
+        return uniform(seed ^ block*0x9e3779b97f4a7c15L ^ (level+1)*0x94d049bb133111ebL)*2-1;
     }
-
-    private static double speedAt(double base, double amplitude, double seconds) {
-        double pos = (seconds / SPEED_INTERVAL) % SPEED_PERIOD;
-        int index = (int) pos;
+    private static long phase(long seed,int level) {return mix(seed+level)&(SPEED_HALVES[level]*2-1);}
+    private static double target(long seed,long index) {
+        double value=0;
+        for(int level=0;level<SPEED_HALVES.length;level++) {
+            int half=SPEED_HALVES[level],size=half*2;
+            long shifted=index+phase(seed,level);
+            value+=SPEED_WEIGHTS[level]*amplitude(seed,shifted/size,level)*(shifted%size<half ? 1 : -1);
+        }
+        return value;
+    }
+    private static double blockPrefix(long seed,long index,int level) {
+        int half=SPEED_HALVES[level],size=half*2;
+        long remainder=index%size;
+        return amplitude(seed,index/size,level)*Math.min(remainder,size-remainder);
+    }
+    private static double targetSum(long seed,long count) {
+        double value=0;
+        for(int level=0;level<SPEED_HALVES.length;level++) {
+            long offset=phase(seed,level);
+            value+=SPEED_WEIGHTS[level]*(blockPrefix(seed,count+offset,level)-blockPrefix(seed,offset,level));
+        }
+        return value;
+    }
+    private static double speedAt(double base,double amplitude,double seconds,long seed) {
+        if(amplitude==0 || base==0) return base;
+        double pos=seconds/SPEED_INTERVAL;
+        long index=(long)pos;
         double f = pos - index;
-        double variation = target(index) * (1.0 - f) + target(index + 1) * f;
+        double variation=target(seed,index)*(1-f)+target(seed,index+1)*f;
         return base * (1.0 + amplitude * variation);
     }
-
-    private static double distanceAt(double base, double amplitude, double seconds) {
-        double cycleSeconds = SPEED_PERIOD * SPEED_INTERVAL;
-        double cycles = Math.floor(seconds / cycleSeconds);
-        double rest = seconds - cycles * cycleSeconds;
-        double cycleVariation = 0.0;
-        for (int i = 0; i < SPEED_PERIOD; i++) cycleVariation += target(i);
-        double variationSeconds = cycles * SPEED_INTERVAL * cycleVariation;
-        int whole = (int) (rest / SPEED_INTERVAL);
-        for (int i = 0; i < whole; i++) {
-            variationSeconds += SPEED_INTERVAL * (target(i) + target(i + 1)) / 2.0;
-        }
-        double remainder = rest - whole * SPEED_INTERVAL;
-        double a = target(whole);
-        double b = target(whole + 1);
-        variationSeconds += a * remainder + (b - a) * remainder * remainder / (2.0 * SPEED_INTERVAL);
+    private static double distanceAt(double base,double amplitude,double seconds,long seed) {
+        if(amplitude==0 || base==0) return base*seconds;
+        double pos=seconds/SPEED_INTERVAL;
+        long whole=(long)pos;
+        double f=pos-whole,a=target(seed,whole),b=target(seed,whole+1);
+        double variationSeconds=SPEED_INTERVAL*(targetSum(seed,whole)+.5*(a-target(seed,0))+a*f+.5*(b-a)*f*f);
         return Math.max(0.0, base * (seconds + amplitude * variationSeconds));
     }
 
-    // Slowly interpolate a bounded 2D error, using a shared clock so processes agree.
+    // Correlated synthetic drift, not a calibrated GNSS receiver model.
+    // Convex mixtures of bounded disk samples preserve the configured radius.
+    static double[] jitterOffset(Config c,long now) {
+        long seed=mix(c.startTime ^ 0xd1b54a32d192ed03L);
+        double seconds=Math.max(0,(now-(c.startTime>0 ? (double)c.startTime : 0))/1000.0);
+        double[] intervals={61,13,2.3},weights={.70,.24,.06};
+        double x=0,y=0;
+        for(int level=0;level<intervals.length;level++) {
+            long salt=seed ^ (level+1)*0x9e3779b97f4a7c15L;
+            double pos=seconds/intervals[level]+uniform(salt),f=pos-Math.floor(pos);
+            long index=(long)Math.floor(pos);
+            double blend=f*f*f*(10+f*(-15+6*f));
+            double[] a=disk(salt,index),b=disk(salt,index+1);
+            x+=weights[level]*(a[0]*(1-blend)+b[0]*blend);
+            y+=weights[level]*(a[1]*(1-blend)+b[1]*blend);
+        }
+        double radius=finiteClamp(c.jitterMeters,1,3,2);
+        return new double[]{x*radius,y*radius};
+    }
+    private static double[] disk(long seed,long index) {
+        double u=Math.max(0x1.0p-53,uniform(seed ^ index*0x94d049bb133111ebL));
+        double radius=Math.tanh(.6*Math.sqrt(-2*Math.log(u)));
+        double angle=2*Math.PI*uniform(seed ^ index*0xbf58476d1ce4e5b9L ^ 0x632be59bd9b4e019L);
+        return new double[]{radius*Math.cos(angle),radius*Math.sin(angle)};
+    }
     private static void applyJitter(Config c, Snap s, long now) {
-        double radius = finiteClamp(c.jitterMeters, 1.0, 3.0, 2.0);
-        double t = Math.max(0.0, now / 4000.0);
-        long bucket = (long) Math.floor(t);
-        double fraction = t - bucket;
-        // Points are sampled in a disk, so interpolation cannot leave that disk.
-        double ax = noise(bucket, 17), ay = noise(bucket, 53);
-        double bx = noise(bucket + 1, 17), by = noise(bucket + 1, 53);
-        double an = Math.max(1.0, Math.hypot(ax, ay));
-        double bn = Math.max(1.0, Math.hypot(bx, by));
-        double x = ax / an * (1.0 - fraction) + bx / bn * fraction;
-        double y = ay / an * (1.0 - fraction) + by / bn * fraction;
-        s.lat = Math.max(-90.0, Math.min(90.0, s.lat + y * radius / 111320.0));
+        double[] offset=jitterOffset(c,now);
+        s.lat = Math.max(-90.0, Math.min(90.0, s.lat + offset[1] / 111320.0));
         double cos = Math.max(0.001, Math.abs(Math.cos(Math.toRadians(s.lat))));
-        s.lon += x * radius / (111320.0 * cos);
+        s.lon += offset[0] / (111320.0 * cos);
         s.lon = ((s.lon + 540.0) % 360.0) - 180.0;
     }
 
-    private static double noise(long bucket, int salt) {
-        long x = bucket * 0x9e3779b97f4a7c15L + salt;
+    private static long mix(long x) {
         x ^= x >>> 30;
         x *= 0xbf58476d1ce4e5b9L;
         x ^= x >>> 27;
         x *= 0x94d049bb133111ebL;
         x ^= x >>> 31;
-        return ((x >>> 11) * 0x1.0p-53) * 2.0 - 1.0;
+        return x;
     }
+    private static double uniform(long value) {return (mix(value)>>>11)*0x1.0p-53;}
 
     private static double finiteClamp(double value, double min, double max, double fallback) {
         if (Double.isNaN(value) || Double.isInfinite(value)) return fallback;

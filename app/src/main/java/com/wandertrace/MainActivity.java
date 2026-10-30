@@ -7,6 +7,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.text.util.Linkify;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
@@ -351,6 +353,14 @@ public class MainActivity extends Activity {
         EditText speed=form.findViewById(R.id.etSpeed),random=form.findViewById(R.id.etSpeedRandom),cadence=form.findViewById(R.id.etCadence);
         RadioGroup steps=form.findViewById(R.id.rgCadence);Switch loop=form.findViewById(R.id.swLoop);
         speed.setText(num(cfg.speedKmh/3.6));random.setText(num(cfg.speedRandomPercent));cadence.setText(num(cfg.cadenceSpm));
+        TextView pace=form.findViewById(R.id.tvPace);
+        Runnable updatePace=() -> pace.setText(Pace.summary(number(speed),number(random)));
+        TextWatcher paceWatcher=new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s,int start,int count,int after) {}
+            @Override public void onTextChanged(CharSequence s,int start,int before,int count) {}
+            @Override public void afterTextChanged(Editable text) {updatePace.run();}
+        };
+        speed.addTextChangedListener(paceWatcher);random.addTextChangedListener(paceWatcher);updatePace.run();
         steps.check(cfg.cadenceMode==1 ? R.id.rbCadenceAuto : cfg.cadenceMode==2 ? R.id.rbCadenceCustom : R.id.rbCadenceOff);
         cadence.setEnabled(cfg.cadenceMode==2);loop.setChecked(cfg.loop);
         steps.setOnCheckedChangeListener((group,id) -> cadence.setEnabled(id==R.id.rbCadenceCustom));

@@ -5,9 +5,10 @@
         <Spinner android:id="@+id/spProfile" android:layout_width="match_parent" android:layout_height="48dp" android:spinnerMode="dropdown" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="速度（m/s）" android:textColor="@color/text" android:layout_marginTop="12dp" />
         <EditText android:id="@+id/etSpeed" style="@style/Field" android:hint="0–138.89 m/s" android:inputType="numberDecimal" />
+        <TextView android:id="@+id/tvPace" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="配速：—" android:textColor="@color/sub" android:textSize="13sp" android:accessibilityLiveRegion="polite" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="速度随机幅度（0–50%）" android:textColor="@color/text" android:layout_marginTop="12dp" />
         <EditText android:id="@+id/etSpeedRandom" style="@style/Field" android:hint="随机幅度 %" android:inputType="numberDecimal" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="速度在设定值上下线性变化。" android:textColor="@color/sub" android:textSize="12sp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="0% 为匀速；非 0% 时速度连续线性变化，各公里配速自然浮动。" android:textColor="@color/sub" android:textSize="12sp" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="步频模拟" android:textColor="@color/text" android:textStyle="bold" android:layout_marginTop="18dp" />
         <RadioGroup android:id="@+id/rgCadence" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
             <RadioButton android:id="@+id/rbCadenceOff" android:layout_width="match_parent" android:layout_height="48dp" android:text="关闭" />

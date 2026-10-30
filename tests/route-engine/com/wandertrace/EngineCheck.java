@@ -24,10 +24,8 @@ public class EngineCheck {
         double lastDistance = 0;
         for (long dt = 100; dt <= 10000; dt += 100) {
             RouteEngine.Snap s = RouteEngine.compute(route, route.startTime + dt);
-            Config reference = new Config();
-            RouteEngine.Snap jitter = RouteEngine.compute(reference, route.startTime + dt);
-            // Subtract the same deterministic latitude error to isolate route displacement.
-            double position = RouteEngine.distance(39, 116, s.lat - (jitter.lat - 39), 116);
+            double[] jitter=RouteEngine.jitterOffset(route,route.startTime+dt);
+            double position = RouteEngine.distance(39, 116, s.lat-jitter[1]/111320.0, 116);
             require(s.speedMps <= last + 1e-8, "braking speed");
             double expected = (last + s.speedMps) * .05;
             require(Math.abs((position - lastDistance) - expected) < .005, "speed and distance integration");

@@ -17,10 +17,10 @@ An Android module for system-wide location, route, and step simulation, powered 
 
 - **Single-point simulation:** drag the map to position the center crosshair, then start at that location. No manual coordinate entry is needed.
 - **Route simulation:** add multiple points using the center crosshair. Drafts persist locally; save, load, and delete multiple named routes.
-- **Movement profiles:** walking, jogging, running, cycling, driving, and custom. Selecting a profile updates the suggested speed. The interface uses **m/s**.
-- **Smooth speed variation:** choose a randomization range from **0–50%** of the base speed, with linear transitions between speed targets.
+- **Movement profiles:** walking, jogging, running, cycling, driving, and custom. Selecting a profile updates the suggested speed. Input remains in **m/s**, with a live pace readout in **min/km**.
+- **Smooth speed variation:** choose a randomization range from **0–50%** of the base speed, with session-specific linear variation across multiple timescales. New configurations use 10%; saved 0% settings remain constant-speed. Kilometre splits vary with the curve rather than following a repeated 640-second table.
 - **Step cadence:** disable step simulation, adapt cadence to speed, or set a custom cadence in steps/minute. Cadence changes gradually with a limited slope.
-- **GPS jitter:** configure a jitter radius of **1–3 meters**.
+- **GPS jitter:** configure a radius of **1–3 meters**, combining continuous slow drift with smaller short-term variation. See the [motion model notes](docs/MOTION_MODEL.md) for implementation and validation limits.
 - **Map controls:** road and satellite layers, place search, continuous pinch zoom, and center-based point selection. The Leaflet renderer is bundled locally.
 - **Simple controls:** speed, cadence, travel profile, and looping are configured in the route start dialog. The start button becomes a red stop button while simulation is active.
 - **Automatic checks:** ROOT authorization and LSPosed status are checked when the app opens or returns to the foreground.
